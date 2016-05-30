@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ /*
+  ~  (C) Copyright 2016 Ymatou (http://www.ymatou.com/).
+  ~  All rights reserved.
+  ~  */
+  -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+        http://www.springframework.org/schema/aop 
+        http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://code.alibabatech.com/schema/dubbo        
+        http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+        http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+        ">
+
+	<context:annotation-config />
+	
+	<aop:aspectj-autoproxy />
+
+
+	<context:component-scan base-package="${package}" />
+
+	<!-- 使用disconf必须添加以下配置 -->
+	<bean id="disconfMgrBean" class="com.baidu.disconf.client.DisconfMgrBean"
+		  destroy-method="destroy">
+		<property name="scanPackage" value="${package}" />
+	</bean>
+	<bean id="disconfMgrBean2" class="com.baidu.disconf.client.DisconfMgrBeanSecond"
+		  init-method="init" destroy-method="destroy">
+	</bean>
+
+	<bean id="propertiesDisconf"
+		  class="com.baidu.disconf.client.addons.properties.ReloadablePropertiesFactoryBean">
+		<property name="locations">
+			<list>
+				<value>dubbo.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="propertyPlaceholderConfigurer"
+		  class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="propertiesArray">
+			<list>
+				<ref bean="propertiesDisconf" />
+			</list>
+		</property>
+		<property name="locations">
+			<list>
+				<value>classpath:db.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<!-- 核心线程数，默认为1 -->
+		<property name="corePoolSize" value="10" />
+		<!-- 最大线程数，默认为Integer.MAX_VALUE -->
+		<property name="maxPoolSize" value="50" />
+		<!-- 队列最大长度，一般需要设置值>=notifyScheduledMainExecutor.maxNum；默认为Integer.MAX_VALUE -->
+		<property name="queueCapacity" value="1000" />
+		<!-- 线程池维护线程所允许的空闲时间，默认为60s -->
+		<property name="keepAliveSeconds" value="300" />
+		<!-- 线程池对拒绝任务（无线程可用）的处理策略，目前只支持AbortPolicy、CallerRunsPolicy；默认为后者 -->
+		<property name="rejectedExecutionHandler">
+			<!-- AbortPolicy:直接抛出java.client.concurrent.RejectedExecutionException异常 -->
+			<!-- CallerRunsPolicy:主线程直接执行该任务，执行完之后尝试添加下一个任务到线程池中，可以有效降低向线程池内添加任务的速度 -->
+			<!-- DiscardOldestPolicy:抛弃旧的任务、暂不支持；会导致被丢弃的任务无法再次被执行 -->
+			<!-- DiscardPolicy:抛弃当前任务、暂不支持；会导致被丢弃的任务无法再次被执行 -->
+			<bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy" />
+		</property>
+	</bean>
+
+	<import resource="classpath:spring/persistence.xml" />
+
+	<!--<bean id="busAgent" class="com.ymatou.client.DefaultBusAgent" init-method="init">-->
+	<!--</bean>-->
+
+
+	<!-- 性能监控 -->
+	<bean id="performanceMonitorAdvice" class="com.ymatou.performancemonitorclient.PerformanceMonitorAdvice">
+		<!--Please replace it with your appId-->
+		<property name="appId" value="tradeservice"/>
+
+		<!--Please replace ip:port with the .NET Performance Monitor Server ip:port-->
+		<property name="serverUrl" value="http://172.16.100.13:8089/api/perfmon"/>
+	</bean>
+
+
+
+
+	<aop:config>
+		<!-- 添加任何你想监控性能的public方法 -->
+		<aop:advisor advice-ref="performanceMonitorAdvice"
+			pointcut="execution(* ${package}.facade.*Facade.*(..))
+						|| execution(* ${package}.facade.rest.*Resource.*(..))
+						|| execution(* ${package}.infrastructure.db.mapper.*Mapper.*(..))
+						|| execution(* ${package}.infrastructure.db.query.*Query.*(..))
+						|| execution(* ${package}..*Repository.*(..))
+						|| execution(* ${package}.integration.client.*.*(..))
+						" />
+	</aop:config>
+
+
+	<!-- 初始化数据表结构 -->
+	<jdbc:initialize-database data-source="dataSource"
+							  ignore-failures="ALL">
+		<jdbc:script location="classpath:db_h2/create-table.sql" />
+	</jdbc:initialize-database>
+
+
+</beans>
