@@ -21,8 +21,8 @@ mvn archetype:generate
 -Dversion=0.0.1-SNAPSHOT
 
 ```
-(命令应该在一行,为了方便查看,故分开多行)
-mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId=com.ymatou.archetype -DarchetypeArtifactId=dubbo-archetype -DarchetypeVersion=0.1.0 -DgroupId=com.ymatou.demoservice -DartifactId=demoservice -Dversion=0.0.1-SNAPSHOT
+(命令应该在一行,为了方便查看,故分开多行)  
+mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId=com.ymatou.archetype -DarchetypeArtifactId=dubbo-archetype -DarchetypeVersion=0.1.0 -DgroupId=com.ymatou.demoservice -DartifactId=demoservice -Dversion=0.0.1-SNAPSHOT  
 命令 参数的详细说明：
 http://maven.apache.org/archetype/maven-archetype-plugin/generate-mojo.html
 
